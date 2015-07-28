@@ -40,7 +40,8 @@ $ ./reber_grammar.py 100000 | perl -ne'print length($_)."\n";' | histogram.py
 
 we'll examine a number of differing models for this task and report two stats
 1) [perplexity](http://en.wikipedia.org/wiki/Perplexity#Perplexity_per_word)
-and 2) the precision of predicting the second last character.
+and 2) the precision of predicting the second last character (a network should
+be able to 'remember' this long range dependency)
 
 ## trivial models
 
@@ -170,6 +171,10 @@ epoch 17 min, mean, max  perplexity (1.277 1.478 2.134)  second_last (0.996 1.00
 epoch 18 min, mean, max  perplexity (1.207 1.429 2.581)  second_last (0.999 1.000 1.000) took 1.694 sec
 epoch 19 min, mean, max  perplexity (1.253 1.512 2.069)  second_last (0.999 1.000 1.000) took 1.720 sec
 ```
+
+#### v5. attention
+
+need to write this one up; some interesting results
 
 ## conclusions
 
