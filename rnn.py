@@ -24,11 +24,17 @@ optparser.add_option('--adaptive-learning-rate', None, dest='adaptive_learning_r
                      default="rmsprop", help='adaptive learning rate method')
 optparser.add_option('--type', None, dest='type', type='string',
                      default="", help='rnn type; simple, bidirectional, gru or attention')
-optparser.add_option('--epochs', None, dest='epochs', type='int',
+optparser.add_option('--num-epochs', None, dest='num_epochs', type='int',
                      default=5, help='number of epoches to run')
+optparser.add_option('--num-train', None, dest='num_train', type='int',
+                     default=1000, help='number of egs to train in one epoch before testing')
+optparser.add_option('--num-test', None, dest='num_test', type='int',
+                     default=50, help='number of egs to test in one epoch after training')
 optparser.add_option('--num-hidden', None, dest='num_hidden', type='int',
                      default=10, help='hidden node dimensionality')
+
 opts, _arguments = optparser.parse_args()
+print >>sys.stderr, "opts", opts
 
 # data is just characters, ['A', 'B', 'A', ... ]
 # but we left and right pad with <s> and </s> to include prediction of start/end of sequence
@@ -53,7 +59,7 @@ elif opts.type == "gru":
 elif opts.type == "attention":
     rnn = AttentionRnn(n_in, n_hidden)
 else:
-    raise "unknown rnn type? [%s]" % opts.type
+    raise Exception("unknown rnn type? [%s]" % opts.type)
 
 # calculate y based on x and initial hidden state of 0
 # note for rnns that don't support glimpses the value returned for glimpses will be h0
@@ -106,19 +112,24 @@ predict_fn = theano.function(inputs=[t_x],
 
 print "compilation took %0.3f s" % (time.time()-compile_start_time)
 
-for epoch in range(opts.epochs):
+for epoch in range(opts.num_epochs):
     start_time = time.time()
 
     # train on 1000 examples. no batching yet!! o_O
-    for _ in xrange(1000):
+    costs = []
+    for train_idx in xrange(opts.num_train):
         training_eg = rb.ids_for(rb.embedded_reber_sequence())
         x, y = training_eg[:-1], training_eg[1:]
         cost, = train_fn(x, y)
+        costs.append(cost)
+        if train_idx != 0 and train_idx % 1000 == 0:
+            print "cost: min", np.min(costs), "mean", np.mean(costs), "max", np.max(costs)
+            costs = []
 
     # test on more, for now just 1 since we're hacking
     # with glimpse vectors
     prob_seqs = []
-    for test_idx in xrange(1):
+    for test_idx in xrange(opts.num_test):
         probabilities = []
         test_eg = rb.ids_for(rb.embedded_reber_sequence())
         x, y = test_eg[:-1], test_eg[1:]
@@ -136,7 +147,8 @@ for epoch in range(opts.epochs):
 
         for n, (y_true_i, y_softmax, glimpse) in enumerate(zip(y, y_softmaxs, glimpses)):
             print "(%s) -> (%s)" % (rb.LABELS[x[n]], rb.LABELS[y_true_i])
-            print "  y_softmax", zip(rb.LABELS, util.float_array_to_str(y_softmax))
+            print "  y_softmax", sorted(zip(rb.LABELS, y_softmax),
+                                        key=lambda (label, prob): -prob)[:5]
             if glimpse is not None:
                 print "  glimpse", zip(rb.tokens_for(x), util.float_array_to_str(glimpse))
             y_true_confidence = y_softmax[y_true_i]
