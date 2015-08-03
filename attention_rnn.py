@@ -7,7 +7,8 @@ import theano.tensor as T
 class AttentionRnn(object):
     def __init__(self, n_in, n_hidden):
         # for trivial annotation network
-        self.Wx = util.sharedMatrix(n_hidden, n_in, 'Wx')  # embeddings
+        self.Wx_a = util.sharedMatrix(n_hidden, n_in, 'Wx_a')  # embeddings for annotations
+        self.Wx_g = util.sharedMatrix(n_hidden, n_in, 'Wx_g')  # embeddings for glimpses
         self.Whx = util.sharedMatrix(n_hidden, n_hidden, 'Whx')
         # for attention network
         self.Wag = util.sharedMatrix(n_hidden, n_hidden, 'Wag')
@@ -17,12 +18,12 @@ class AttentionRnn(object):
         self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy')
 
     def params(self):
-        return [self.Wx, self.Whx, self.Wag, self.Wug, self.wgs, self.Wy]
+        return [self.Wx_a, self.Wx_g, self.Whx, self.Wag, self.Wug, self.wgs, self.Wy]
 
     def _annotation_step(self, x_t, h_t_minus_1):
         # calc new hidden state; elementwise add of embedded input &
         # recurrent weights dot last hiddenstate
-        embedding = self.Wx[:, x_t]
+        embedding = self.Wx_a[:, x_t]
         h_t = T.tanh(embedding + T.dot(self.Whx, h_t_minus_1))
         # TODO annotation_t = some_f(h_t) ?
         return [h_t, h_t]
@@ -31,7 +32,7 @@ class AttentionRnn(object):
         # first we need to mix the annotations using 'u' as a the context of
         # attention. we'll be doing _all_ annotations wrt u in one hit, so we
         # need a column broadcastable version of u
-        embedding = self.Wx[:, u]
+        embedding = self.Wx_g[:, u]
         u_col = embedding.dimshuffle(0, 'x')
         glimpse_vectors = T.tanh(T.dot(self.Wag, annotations.T) + T.dot(self.Wug, u_col))
 
