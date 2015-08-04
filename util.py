@@ -11,6 +11,8 @@ def stats(values):
     return "(" + " ".join(["%.3f" % v for v in summary_stats]) + ")"
 
 def perplexity_stats(prob_seqs):
+    if len(prob_seqs) == 0:
+        return ""
     perplexities = [perplexity_of_sequence(prob_seq) for prob_seq in prob_seqs]
     third_last_probs = [prob_seq[-3] for prob_seq in prob_seqs]
     return "min, mean, max  perplexity %s  third_last %s" % (stats(perplexities), stats(third_last_probs))

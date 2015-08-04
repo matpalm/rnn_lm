@@ -30,7 +30,9 @@ optparser.add_option('--num-train', None, dest='num_train', type='int',
                      default=1000, help='number of egs to train in one epoch before testing')
 optparser.add_option('--num-test', None, dest='num_test', type='int',
                      default=50, help='number of egs to test in one epoch after training')
-optparser.add_option('--num-hidden', None, dest='num_hidden', type='int',
+optparser.add_option('--embedding-dim', None, dest='embedding_dim', type='int',
+                     default=3, help='embedding node dimensionality')
+optparser.add_option('--hidden-dim', None, dest='hidden_dim', type='int',
                      default=10, help='hidden node dimensionality')
 
 opts, _arguments = optparser.parse_args()
@@ -42,7 +44,8 @@ print >>sys.stderr, "opts", opts
 
 # matrix sizing
 n_in = rb.vocab_size()
-n_hidden = opts.num_hidden
+n_embedding = opts.embedding_dim
+n_hidden = opts.hidden_dim
 
 # t_x input and t_y output sequence
 t_x = T.ivector('x')  # eg s A B A D   for sequence A B A D
@@ -51,13 +54,13 @@ t_y = T.ivector('y')  # eg A B A D /s  for sequence A B A D
 # build specific rnn type
 rnn = None
 if opts.type == "simple":
-    rnn = SimpleRnn(n_in, n_hidden)
+    rnn = SimpleRnn(n_in, n_embedding, n_hidden)
 elif opts.type == "bidirectional":
-    rnn = BidirectionalRnn(n_in, n_hidden)
+    rnn = BidirectionalRnn(n_in, n_embedding, n_hidden)
 elif opts.type == "gru":
-    rnn = GruRnn(n_in, n_hidden)
+    rnn = GruRnn(n_in, n_embedding, n_hidden)
 elif opts.type == "attention":
-    rnn = AttentionRnn(n_in, n_hidden)
+    rnn = AttentionRnn(n_in, n_embedding, n_hidden)
 else:
     raise Exception("unknown rnn type? [%s]" % opts.type)
 
@@ -96,7 +99,6 @@ if update_fn == None:
 
 gradients = T.grad(cost=cross_entropy, wrt=rnn.params())
 updates = update_fn(rnn.params(), gradients)
-
 
 compile_start_time = time.time()
 

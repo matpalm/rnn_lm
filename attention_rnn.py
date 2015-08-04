@@ -5,14 +5,14 @@ import theano
 import theano.tensor as T
 
 class AttentionRnn(object):
-    def __init__(self, n_in, n_hidden):
+    def __init__(self, n_in, n_embedding, n_hidden):
         # for trivial annotation network
-        self.Wx_a = util.sharedMatrix(n_hidden, n_in, 'Wx_a')  # embeddings for annotations
-        self.Wx_g = util.sharedMatrix(n_hidden, n_in, 'Wx_g')  # embeddings for glimpses
-        self.Whx = util.sharedMatrix(n_hidden, n_hidden, 'Whx')
+        self.Wx_a = util.sharedMatrix(n_embedding, n_in, 'Wx_a')  # embeddings for annotations
+        self.Whx = util.sharedMatrix(n_hidden, n_embedding, 'Whx')
         # for attention network
+        self.Wx_g = util.sharedMatrix(n_embedding, n_in, 'Wx_g')  # embeddings for glimpses
+        self.Wug = util.sharedMatrix(n_hidden, n_embedding, 'Wug')
         self.Wag = util.sharedMatrix(n_hidden, n_hidden, 'Wag')
-        self.Wug = util.sharedMatrix(n_hidden, n_hidden, 'Wug')
         self.wgs = util.sharedVector(n_hidden, 'Wgs')
         # final mapping to y
         self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy')
@@ -24,7 +24,7 @@ class AttentionRnn(object):
         # calc new hidden state; elementwise add of embedded input &
         # recurrent weights dot last hiddenstate
         embedding = self.Wx_a[:, x_t]
-        h_t = T.tanh(embedding + T.dot(self.Whx, h_t_minus_1))
+        h_t = T.tanh(h_t_minus_1 + T.dot(self.Whx, embedding))
         # TODO annotation_t = some_f(h_t) ?
         return [h_t, h_t]
 
