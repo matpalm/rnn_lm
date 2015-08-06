@@ -14,6 +14,7 @@ import util
 import reber_grammar as rb
 import theano
 import theano.tensor as T
+from theano.ifelse import ifelse
 from simple_rnn import SimpleRnn
 from bidirectional_rnn import BidirectionalRnn
 from gru_rnn import GruRnn
@@ -22,6 +23,8 @@ from attention_rnn import AttentionRnn
 optparser = optparse.OptionParser(prog='rnn')
 optparser.add_option('--adaptive-learning-rate', None, dest='adaptive_learning_rate_fn', type='string',
                      default="rmsprop", help='adaptive learning rate method')
+optparser.add_option('--learning-rate', None, dest='learning_rate', type='float',
+                     default=0.05, help='learning rate')
 optparser.add_option('--type', None, dest='type', type='string',
                      default="", help='rnn type; simple, bidirectional, gru or attention')
 optparser.add_option('--num-epochs', None, dest='num_epochs', type='int',
@@ -73,11 +76,26 @@ t_y_softmax, glimpses = rnn.t_y_softmax(t_x, t_h0)
 # loss is just cross entropy of the softmax output compared to the target
 cross_entropy = T.mean(T.nnet.categorical_crossentropy(t_y_softmax, t_y))
 
-# gradient update; either vanilla or rmsprop
-learning_rate = 0.05
+# calculate gradients and do some rescaling / clipping
+gradients = T.grad(cost=cross_entropy, wrt=rnn.params())
+
+# zero out any gradient elements that are NaN; seems to happen sometimes
+# when gradients are vanishing (?)
+# TODO: T.or_(T.isinf) too?
+#gradients = [T.switch(T.isnan(g), 0, g) for g in pre_nan_gradients]
+
+# simple clipping; if l2-norm is too high we just rescale everything down
+# (this, with update rule, results in a squashed param)
+#clipped_gradients = []
+#RESCALE = 2.0
+#for gradient, orig_param in zip(gradients, rnn.params()):
+#    grad_norm = gradient.norm(L=2)
+#    rescaling_factor = RESCALE / T.maximum(RESCALE, grad_norm)
+#    clipped_gradients.append(gradient * rescaling_factor)
+#gradients = clipped_gradients
 
 def vanilla(params, gradients):
-    return [(param, param - learning_rate * gradient) for param, gradient in zip(params, gradients)]
+    return [(param, param - opts.learning_rate * gradient) for param, gradient in zip(params, gradients)]
 
 def rmsprop(params, gradients):
     updates = []
@@ -85,10 +103,10 @@ def rmsprop(params, gradients):
         # rmsprop see slide 29 of http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
         # first the mean_sqr exponential moving average
         mean_sqr_t0 = theano.shared(np.zeros(param_t0.get_value().shape, dtype=param_t0.get_value().dtype))  # zeros in same shape are param
-        mean_sqr_t1 = 0.9 * mean_sqr_t0 + 0.1 * (gradient**2)
+        mean_sqr_t1 = 0.9 * mean_sqr_t0 + 0.1 * gradient**2
         updates.append((mean_sqr_t0, mean_sqr_t1))
         # update param surpressing gradient by this average
-        param_t1 = param_t0 - learning_rate * (gradient / T.sqrt(mean_sqr_t1 + 1e-10))
+        param_t1 = param_t0 - opts.learning_rate * (gradient / T.sqrt(mean_sqr_t1 + 1e-10))
         updates.append((param_t0, param_t1))
     return updates
 
@@ -97,7 +115,6 @@ update_fn = globals().get(opts.adaptive_learning_rate_fn)
 if update_fn == None:
     raise Exception("no update_fn " + opts.adaptive_learning_rate_fn)
 
-gradients = T.grad(cost=cross_entropy, wrt=rnn.params())
 updates = update_fn(rnn.params(), gradients)
 
 compile_start_time = time.time()
@@ -110,8 +127,6 @@ train_fn = theano.function(inputs=[t_x, t_y],
 # compile function to emit predictions
 predict_fn = theano.function(inputs=[t_x],
                              outputs=[t_y_softmax, glimpses])
-
-
 print "compilation took %0.3f s" % (time.time()-compile_start_time)
 
 for epoch in range(opts.num_epochs):
