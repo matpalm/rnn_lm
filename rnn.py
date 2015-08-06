@@ -136,6 +136,9 @@ for epoch in range(opts.num_epochs):
         training_eg = rb.ids_for(rb.embedded_reber_sequence())
         x, y = training_eg[:-1], training_eg[1:]
         cost, = train_fn(x, y)
+        if np.isnan(cost):
+            print >>sys.stderr, "NaN cost! seeing this when gradients converge to 0 (?)"
+            exit(1)
         costs.append(cost)
         if train_idx != 0 and train_idx % 1000 == 0:
             print "cost: min", np.min(costs), "mean", np.mean(costs), "max", np.max(costs)
@@ -166,7 +169,9 @@ for epoch in range(opts.num_epochs):
                                         sorted(zip(rb.LABELS, y_softmax),
                                                key=lambda (label, prob): -prob)[:5])
             if glimpse is not None:
-                print "  glimpse", zip(rb.tokens_for(x), util.float_array_to_str(glimpse))
+                glimpses_strs = util.float_array_to_str(glimpse)
+                print "  glimpse (f)", zip(rb.tokens_for(x), glimpses_strs[:len(x)])  # first half is from forward pass
+                print "  glimpse (b)", zip(rb.tokens_for(x), glimpses_strs[len(x):])  # second half is from backwards pass
             y_true_confidence = y_softmax[y_true_i]
             probabilities.append(y_true_confidence)
         prob_seqs.append(probabilities)
