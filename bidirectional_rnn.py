@@ -21,7 +21,7 @@ class BidirectionalRnn(object):
     def scan_through_x(self, 
                        x_t,            # sequence to scan
                        h_t_minus_1,    # recurrent state
-                       Wx, Wrec, Wy):  # non_sequences
+                       Wx, Wrec, Wy):  # non sequences
         # calc new hidden state; elementwise add of embedded input &
         # recurrent weights dot _last_ hiddenstate
         embedding = Wx[x_t]
@@ -46,6 +46,7 @@ class BidirectionalRnn(object):
                                          sequences = [t_x],
                                          non_sequences = [self.Wx_b, self.Wrec_b, self.Wy_b],
                                          outputs_info = [h0, None])
+        y_ts_b = y_ts_b[::-1]  # flip indexing on backwards pass so it's comparable to _f
         # elementwise combine y contributions and apply softmax
         y_softmax, _ = theano.scan(fn = lambda y_f, y_b: T.flatten(T.nnet.softmax(y_f + y_b), 1),
                                    sequences = [y_ts_f, y_ts_b],
