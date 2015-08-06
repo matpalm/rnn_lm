@@ -162,8 +162,9 @@ for epoch in range(opts.num_epochs):
 
         for n, (y_true_i, y_softmax, glimpse) in enumerate(zip(y, y_softmaxs, glimpses)):
             print "(%s) -> (%s)" % (rb.LABELS[x[n]], rb.LABELS[y_true_i])
-            print "  y_softmax", sorted(zip(rb.LABELS, y_softmax),
-                                        key=lambda (label, prob): -prob)[:5]
+            print "  y_softmax", filter(lambda (label, prob): prob > 1e-4,
+                                        sorted(zip(rb.LABELS, y_softmax),
+                                               key=lambda (label, prob): -prob)[:5])
             if glimpse is not None:
                 print "  glimpse", zip(rb.tokens_for(x), util.float_array_to_str(glimpse))
             y_true_confidence = y_softmax[y_true_i]
