@@ -6,9 +6,9 @@ import theano.tensor as T
 
 class GruRnn(object):
     def __init__(self, n_in, n_embedding, n_hidden):
-        self.Wx = util.sharedMatrix(n_embedding, n_in, 'Wx')
-        self.Wz = util.sharedMatrix(n_hidden, n_in, 'Wz')
-        self.Wr = util.sharedMatrix(n_hidden, n_in, 'Wr')
+        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx')
+        self.Wz = util.sharedMatrix(n_in, n_hidden, 'Wz')
+        self.Wr = util.sharedMatrix(n_in, n_hidden, 'Wr')
         self.Ux = util.sharedMatrix(n_hidden, n_embedding, 'Ux')
         self.Uz = util.sharedMatrix(n_hidden, n_hidden, 'Uz')
         self.Ur = util.sharedMatrix(n_hidden, n_hidden, 'Ur')
@@ -19,13 +19,13 @@ class GruRnn(object):
 
     def recurrent_step(self, x_t, h_t_minus_1):
         # calc reset gate activation
-        r = T.nnet.sigmoid(self.Wr[:, x_t] + T.dot(self.Ur, h_t_minus_1))
+        r = T.nnet.sigmoid(self.Wr[x_t] + T.dot(self.Ur, h_t_minus_1))
         # calc candidate next hidden state (with reset 'r')
-        embedding = self.Wx[:, x_t]
+        embedding = self.Wx[x_t]
         h_t_candidate = T.tanh(r * h_t_minus_1 + T.dot(self.Ux, embedding))
 
         # calc update gate activation 
-        z = T.nnet.sigmoid(self.Wz[:, x_t] + T.dot(self.Uz, h_t_minus_1))
+        z = T.nnet.sigmoid(self.Wz[x_t] + T.dot(self.Uz, h_t_minus_1))
         # calc hidden state as affine combo of last state and candidate next state
         h_t = (1 - z) * h_t_minus_1 + z * h_t_candidate
 

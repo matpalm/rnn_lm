@@ -6,7 +6,7 @@ import theano.tensor as T
 
 class SimpleRnn(object):
     def __init__(self, n_in, n_embedding, n_hidden):
-        self.Wx = util.sharedMatrix(n_embedding, n_in, 'Wx')
+        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx')
         self.Wrec = util.sharedMatrix(n_hidden, n_embedding, 'Wrec')
         self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy')
 
@@ -16,7 +16,7 @@ class SimpleRnn(object):
     def recurrent_step(self, x_t, h_t_minus_1):
         # calc new hidden state; elementwise add of embedded input & 
         # recurrent weights dot _last_ hiddenstate
-        embedding = self.Wx[:, x_t]
+        embedding = self.Wx[x_t]
         h_t = T.tanh(h_t_minus_1 + T.dot(self.Wrec, embedding))
 
         # calc output; softmax over output weights dot hidden state

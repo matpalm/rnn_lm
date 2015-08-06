@@ -7,11 +7,11 @@ import theano.tensor as T
 class BidirectionalRnn(object):
     def __init__(self, n_in, n_embedding, n_hidden):
         # forward pass
-        self.Wx_f = util.sharedMatrix(n_embedding, n_in, 'Wx_f')
+        self.Wx_f = util.sharedMatrix(n_in, n_embedding, 'Wx_f')
         self.Wrec_f = util.sharedMatrix(n_hidden, n_embedding, 'Wrec_f')
         self.Wy_f = util.sharedMatrix(n_in, n_hidden, 'Wy_f')
         # backwards pass
-        self.Wx_b = util.sharedMatrix(n_embedding, n_in, 'Wx_b')
+        self.Wx_b = util.sharedMatrix(n_in, n_embedding, 'Wx_b')
         self.Wrec_b = util.sharedMatrix(n_hidden, n_embedding, 'Wrec_b')
         self.Wy_b = util.sharedMatrix(n_in, n_hidden, 'Wy_b')
 
@@ -24,7 +24,7 @@ class BidirectionalRnn(object):
                        Wx, Wrec, Wy):  # non_sequences
         # calc new hidden state; elementwise add of embedded input &
         # recurrent weights dot _last_ hiddenstate
-        embedding = Wx[:, x_t]
+        embedding = Wx[x_t]
         h_t = T.tanh(h_t_minus_1 + T.dot(Wrec, embedding))
 
         # calc contribution to y
