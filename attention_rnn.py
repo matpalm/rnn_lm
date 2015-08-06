@@ -5,17 +5,17 @@ import theano
 import theano.tensor as T
 
 class AttentionRnn(object):
-    def __init__(self, n_in, n_embedding, n_hidden):
+    def __init__(self, n_in, n_embedding, n_hidden, orthogonal_init):
         # for trivial annotation network
-        self.Wx_a = util.sharedMatrix(n_in, n_embedding, 'Wx_a')  # embeddings for annotations
-        self.Whx = util.sharedMatrix(n_hidden, n_embedding, 'Whx')
+        self.Wx_a = util.sharedMatrix(n_in, n_embedding, 'Wx_a', orthogonal_init)  # embeddings for annotations
+        self.Whx = util.sharedMatrix(n_hidden, n_embedding, 'Whx', orthogonal_init)
         # for attention network
-        self.Wx_g = util.sharedMatrix(n_in, n_embedding, 'Wx_g')  # embeddings for glimpses
-        self.Wug = util.sharedMatrix(n_hidden, n_embedding, 'Wug')
-        self.Wag = util.sharedMatrix(n_hidden, n_hidden, 'Wag')
+        self.Wx_g = util.sharedMatrix(n_in, n_embedding, 'Wx_g', orthogonal_init)  # embeddings for glimpses
+        self.Wug = util.sharedMatrix(n_hidden, n_embedding, 'Wug', orthogonal_init)
+        self.Wag = util.sharedMatrix(n_hidden, n_hidden, 'Wag', orthogonal_init)
         self.wgs = util.sharedVector(n_hidden, 'Wgs')
         # final mapping to y
-        self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy')
+        self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy', orthogonal_init)
 
     def params(self):
         return [self.Wx_a, self.Wx_g, self.Whx, self.Wag, self.Wug, self.wgs, self.Wy]

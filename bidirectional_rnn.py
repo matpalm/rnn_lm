@@ -5,15 +5,15 @@ import theano
 import theano.tensor as T
 
 class BidirectionalRnn(object):
-    def __init__(self, n_in, n_embedding, n_hidden):
+    def __init__(self, n_in, n_embedding, n_hidden, orthogonal_init):
         # forward pass
-        self.Wx_f = util.sharedMatrix(n_in, n_embedding, 'Wx_f')
-        self.Wrec_f = util.sharedMatrix(n_hidden, n_embedding, 'Wrec_f')
-        self.Wy_f = util.sharedMatrix(n_in, n_hidden, 'Wy_f')
+        self.Wx_f = util.sharedMatrix(n_in, n_embedding, 'Wx_f', orthogonal_init)
+        self.Wrec_f = util.sharedMatrix(n_hidden, n_embedding, 'Wrec_f', orthogonal_init)
+        self.Wy_f = util.sharedMatrix(n_in, n_hidden, 'Wy_f', orthogonal_init)
         # backwards pass
-        self.Wx_b = util.sharedMatrix(n_in, n_embedding, 'Wx_b')
-        self.Wrec_b = util.sharedMatrix(n_hidden, n_embedding, 'Wrec_b')
-        self.Wy_b = util.sharedMatrix(n_in, n_hidden, 'Wy_b')
+        self.Wx_b = util.sharedMatrix(n_in, n_embedding, 'Wx_b', orthogonal_init)
+        self.Wrec_b = util.sharedMatrix(n_hidden, n_embedding, 'Wrec_b', orthogonal_init)
+        self.Wy_b = util.sharedMatrix(n_in, n_hidden, 'Wy_b', orthogonal_init)
 
     def params(self):
         return [self.Wx_f, self.Wrec_f, self.Wy_f, self.Wx_b, self.Wrec_b, self.Wy_b]

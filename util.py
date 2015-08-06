@@ -21,8 +21,14 @@ def prob_stats(x, y, probs):
     probs_str = ["%.2f" % p for p in probs]
     return "xyp " + " ".join(map(str, zip(x, y, probs_str)))
 
-def sharedMatrix(n_rows, n_cols, name):
-    return theano.shared(np.asarray(np.random.randn(n_rows, n_cols), dtype='float32'), name=name, borrow=True)
+def sharedMatrix(n_rows, n_cols, name, orthogonal_init=True):
+    if orthogonal_init and n_rows < n_cols:
+        print >>sys.stderr, "warning: can't do orthogonal init of %s, since n_rows (%s) < n_cols (%s)" % (name, n_rows, n_cols)
+        orthogonal_init = False
+    w = np.random.randn(n_rows, n_cols)
+    if orthogonal_init:
+        w, _s, _v = np.linalg.svd(w, full_matrices=False)
+    return theano.shared(np.asarray(w, dtype='float32'), name=name, borrow=True)
 
 def sharedVector(n_elems, name):
     return theano.shared(np.asarray(np.random.randn(n_elems), dtype='float32'), name=name, borrow=True)
@@ -30,10 +36,4 @@ def sharedVector(n_elems, name):
 def float_array_to_str(ns, sd=2):
     format_string = "%%.0%df" % sd
     return [format_string % n for n in ns]
-
-#def pad_sequences(seqs, padding="0"):
-#    max_sequence_length = max([len(seq) for seq in seqs])
-#    for seq in seqs:
-#        while len(seq) < max_sequence_length:
-#            seq.append(padding)
 

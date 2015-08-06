@@ -5,14 +5,14 @@ import theano
 import theano.tensor as T
 
 class GruRnn(object):
-    def __init__(self, n_in, n_embedding, n_hidden):
-        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx')
-        self.Wz = util.sharedMatrix(n_in, n_hidden, 'Wz')
-        self.Wr = util.sharedMatrix(n_in, n_hidden, 'Wr')
-        self.Ux = util.sharedMatrix(n_hidden, n_embedding, 'Ux')
-        self.Uz = util.sharedMatrix(n_hidden, n_hidden, 'Uz')
-        self.Ur = util.sharedMatrix(n_hidden, n_hidden, 'Ur')
-        self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy')
+    def __init__(self, n_in, n_embedding, n_hidden, orthogonal_init):
+        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx', orthogonal_init)
+        self.Wz = util.sharedMatrix(n_in, n_hidden, 'Wz', orthogonal_init)
+        self.Wr = util.sharedMatrix(n_in, n_hidden, 'Wr', orthogonal_init)
+        self.Ux = util.sharedMatrix(n_hidden, n_embedding, 'Ux', orthogonal_init)
+        self.Uz = util.sharedMatrix(n_hidden, n_hidden, 'Uz', orthogonal_init)
+        self.Ur = util.sharedMatrix(n_hidden, n_hidden, 'Ur', orthogonal_init)
+        self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy', orthogonal_init)
 
     def params(self):
         return [self.Wx, self.Wz, self.Wr, self.Ux, self.Uz, self.Ur, self.Wy]

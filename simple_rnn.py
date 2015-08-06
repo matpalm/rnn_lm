@@ -5,10 +5,10 @@ import theano
 import theano.tensor as T
 
 class SimpleRnn(object):
-    def __init__(self, n_in, n_embedding, n_hidden):
-        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx')
-        self.Wrec = util.sharedMatrix(n_hidden, n_embedding, 'Wrec')
-        self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy')
+    def __init__(self, n_in, n_embedding, n_hidden, orthogonal_init):
+        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx', orthogonal_init)
+        self.Wrec = util.sharedMatrix(n_hidden, n_embedding, 'Wrec', orthogonal_init)
+        self.Wy = util.sharedMatrix(n_in, n_hidden, 'Wy', orthogonal_init)
 
     def params(self):
         return [self.Wx, self.Wrec, self.Wy]

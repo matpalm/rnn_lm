@@ -37,6 +37,8 @@ optparser.add_option('--embedding-dim', None, dest='embedding_dim', type='int',
                      default=3, help='embedding node dimensionality')
 optparser.add_option('--hidden-dim', None, dest='hidden_dim', type='int',
                      default=10, help='hidden node dimensionality')
+optparser.add_option('--orthogonal-init', None, dest='orthogonal_init', action="store_true",
+                     help='use SVD for orthogonal weight init')
 
 opts, _arguments = optparser.parse_args()
 print >>sys.stderr, "opts", opts
@@ -45,32 +47,28 @@ print >>sys.stderr, "opts", opts
 # but we left and right pad with <s> and </s> to include prediction of start/end of sequence
 # and convert to idxs
 
-# matrix sizing
-n_in = rb.vocab_size()
-n_embedding = opts.embedding_dim
-n_hidden = opts.hidden_dim
-
 # t_x input and t_y output sequence
 t_x = T.ivector('x')  # eg s A B A D   for sequence A B A D
 t_y = T.ivector('y')  # eg A B A D /s  for sequence A B A D
 
 # build specific rnn type
 rnn = None
+config = (rb.vocab_size(), opts.embedding_dim, opts.hidden_dim, opts.orthogonal_init)
 if opts.type == "simple":
-    rnn = SimpleRnn(n_in, n_embedding, n_hidden)
+    rnn = SimpleRnn(*config)
 elif opts.type == "bidirectional":
-    rnn = BidirectionalRnn(n_in, n_embedding, n_hidden)
+    rnn = BidirectionalRnn(*config)
 elif opts.type == "gru":
-    rnn = GruRnn(n_in, n_embedding, n_hidden)
+    rnn = GruRnn(*config)
 elif opts.type == "attention":
-    rnn = AttentionRnn(n_in, n_embedding, n_hidden)
+    rnn = AttentionRnn(*config)
 else:
     raise Exception("unknown rnn type? [%s]" % opts.type)
 
 # calculate y based on x and initial hidden state of 0
 # note for rnns that don't support glimpses the value returned for glimpses will be h0
 # TODO this returning h0 is super clusmy, need to fix the API
-t_h0 = theano.shared(np.zeros(n_hidden, dtype='float32'), name='h0', borrow=True)
+t_h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 t_y_softmax, glimpses = rnn.t_y_softmax(t_x, t_h0)
 
 # loss is just cross entropy of the softmax output compared to the target
