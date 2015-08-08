@@ -22,7 +22,7 @@ class SimpleRnn(object):
         # calc output; softmax over output weights dot hidden state
         y_t = T.flatten(T.nnet.softmax(T.dot(self.Wy, h_t)), 1)
 
-        # return what we want to have per output step
+        # return next hidden state and y softmax
         return [h_t, y_t]
 
     def t_y_softmax(self, x, h0):

@@ -7,15 +7,17 @@ def perplexity_of_sequence(probabilities):
     return 2**((-1./len(probabilities)) * perplexity_sum)
 
 def stats(values):
-    summary_stats = [min(values), np.median(values), max(values)]
-    return "(" + " ".join(["%.3f" % v for v in summary_stats]) + ")"
+    return map(float, ["%0.3f" % v for v in [np.min(values), np.median(values), np.max(values)]])
 
 def perplexity_stats(prob_seqs):
     if len(prob_seqs) == 0:
-        return ""
-    perplexities = [perplexity_of_sequence(prob_seq) for prob_seq in prob_seqs]
-    third_last_probs = [prob_seq[-3] for prob_seq in prob_seqs]
-    return "min, mean, max  perplexity %s  third_last %s" % (stats(perplexities), stats(third_last_probs))
+        return []
+    return stats([perplexity_of_sequence(prob_seq) for prob_seq in prob_seqs])
+
+def third_last_stats(prob_seqs):
+    if len(prob_seqs) == 0:
+        return []
+    return stats([prob_seq[-3] for prob_seq in prob_seqs])
 
 def prob_stats(x, y, probs):
     probs_str = ["%.2f" % p for p in probs]

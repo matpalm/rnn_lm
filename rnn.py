@@ -8,13 +8,13 @@
 # - trivial randn weight init
 # - no bias with dot products
 
-import sys, time, optparse
+import sys, time, optparse, json
 import numpy as np
 import util
 import reber_grammar as rb
 import theano
 import theano.tensor as T
-from theano.ifelse import ifelse
+from collections import OrderedDict
 from simple_rnn import SimpleRnn
 from bidirectional_rnn import BidirectionalRnn
 from gru_rnn import GruRnn
@@ -77,6 +77,8 @@ cross_entropy = T.mean(T.nnet.categorical_crossentropy(t_y_softmax, t_y))
 # calculate gradients and do some rescaling / clipping
 gradients = T.grad(cost=cross_entropy, wrt=rnn.params())
 
+gradient_norms = [gradient.norm(L=2) for gradient in gradients]
+
 # zero out any gradient elements that are NaN; seems to happen sometimes
 # when gradients are vanishing (?)
 # TODO: T.or_(T.isinf) too?
@@ -115,16 +117,15 @@ if update_fn == None:
 
 updates = update_fn(rnn.params(), gradients)
 
+# compile functions
 compile_start_time = time.time()
-
-# compile function for training; ie with backprop updates
 train_fn = theano.function(inputs=[t_x, t_y],
                            outputs=[cross_entropy],
                            updates=updates)
-
-# compile function to emit predictions
 predict_fn = theano.function(inputs=[t_x],
                              outputs=[t_y_softmax, glimpses])
+gradient_norms_fn = theano.function(inputs=[t_x, t_y],
+                                    outputs=gradient_norms)
 print "compilation took %0.3f s" % (time.time()-compile_start_time)
 
 for epoch in range(opts.num_epochs):
@@ -136,13 +137,15 @@ for epoch in range(opts.num_epochs):
         training_eg = rb.ids_for(rb.embedded_reber_sequence())
         x, y = training_eg[:-1], training_eg[1:]
         cost, = train_fn(x, y)
+        costs.append(float(cost))
         if np.isnan(cost):
             print >>sys.stderr, "NaN cost! seeing this when gradients converge to 0 (?)"
             exit(1)
-        costs.append(cost)
-        if train_idx != 0 and train_idx % 1000 == 0:
-            print "cost: min", np.min(costs), "mean", np.mean(costs), "max", np.max(costs)
-            costs = []
+
+    # use last example trained as an example of L2-norms of gradients
+    sample_gradient_l2_norms = OrderedDict()
+    for param, norm in zip(rnn.params(), gradient_norms_fn(x, y)):
+        sample_gradient_l2_norms[param.name] = float(norm)
 
     # test on more, for now just 1 since we're hacking
     # with glimpse vectors
@@ -172,10 +175,16 @@ for epoch in range(opts.num_epochs):
                 glimpses_strs = util.float_array_to_str(glimpse)
                 print "  glimpse (f)", zip(rb.tokens_for(x), glimpses_strs[:len(x)])  # first half is from forward pass
                 print "  glimpse (b)", zip(rb.tokens_for(x), glimpses_strs[len(x):])  # second half is from backwards pass
-            y_true_confidence = y_softmax[y_true_i]
+            y_true_confidence = float(y_softmax[y_true_i])
             probabilities.append(y_true_confidence)
         prob_seqs.append(probabilities)
 
-    print "epoch", epoch,
-    print util.perplexity_stats(prob_seqs),
-    print "took %.3f sec" % (time.time()-start_time)
+    # dump some stats
+    stats = OrderedDict()
+    stats['epoch'] = epoch
+    stats['costs'] = util.stats(costs)
+    stats['perplexity'] = util.perplexity_stats(prob_seqs)
+    stats['3rd_last'] = util.third_last_stats(prob_seqs)
+    stats['epoch_time'] = time.time() - start_time
+    stats['sample_gradient_l2_norms'] = sample_gradient_l2_norms
+    print "STATS\t%s" % json.dumps(stats)

@@ -34,15 +34,25 @@ class AttentionRnn(object):
         embedding = Wx_a[x_t]
         h_t = T.tanh(h_t_minus_1 + T.dot(Whx, embedding))
         # TODO annotation_t = some_f(h_t) ?
+        # return next hidden state and annotation (which, for now, are the same thing)
         return [h_t, h_t]
 
-    def _attended_annotation(self, u, annotations):
+    def _attended_annotation(self,
+                             u,             # sequence to scan
+                             h_t_minus_1,   # recurrent state
+                             annotations):  # non sequences
         # first we need to mix the annotations using 'u' as a the context of
         # attention. we'll be doing _all_ annotations wrt u in one hit, so we
         # need a column broadcastable version of u
         embedding = self.Wx_g[u]
         u_col = embedding.dimshuffle(0, 'x')
-        glimpse_vectors = T.tanh(T.dot(self.Wag, annotations.T) + T.dot(self.Wug, u_col))
+
+        # we also want to mix in last hidden state. again, for the same reason as u above,
+        # needs to be handled as a broadcasted column.
+        h_t_minus_1_col = h_t_minus_1.dimshuffle(0, 'x')
+
+        # can now combine annotations with u and hidden state
+        glimpse_vectors = T.tanh(T.dot(self.Wag, annotations.T) + T.dot(self.Wug, u_col) + h_t_minus_1_col)
 
         # now collapse the glimpse vectors (there's one per token) to scalars
         unnormalised_glimpse_scalars = T.dot(self.wgs, glimpse_vectors)
@@ -54,7 +64,10 @@ class AttentionRnn(object):
         # attended version of the annotations is the the affine combo of the
         # annotations using the normalised glimpses as the combo weights
         attended_annotations = T.dot(annotations.T, glimpses)
-        return [attended_annotations, glimpses]
+
+        # return 1) attended_annotations to pass as next hidden state
+        #        2) (same) attended annotations & glimpses to collect
+        return [attended_annotations, attended_annotations, glimpses]
 
     def _softmax(self, annotation):
         # calc output; softmax over output weights dot hidden state
@@ -67,22 +80,20 @@ class AttentionRnn(object):
                                                         go_backwards=False,
                                                         sequences=[x],
                                                         non_sequences=[self.Wx_a_f, self.Whx_f],
-                                                        outputs_info=[None, h0])
+                                                        outputs_info=[h0, None])
         [backwards_annotations, _hidden], _ = theano.scan(fn=self._annotation_step,
                                                           go_backwards=True,
                                                           sequences=[x],
                                                           non_sequences=[self.Wx_a_b, self.Whx_b],
-                                                          outputs_info=[None, h0])
+                                                          outputs_info=[h0, None])
         backwards_annotations = backwards_annotations[::-1]  # to make indexing same as forwards_
         annotations = T.concatenate([forward_annotations, backwards_annotations])
 
         # second pass; calculate attention over annotations
-        # NOTE! there is specifically NO recursion here, just each x wrt the annotations.
-        #       this is quite crippling since each token in sequence must be considered
-        #       independently of what has happened before.
-        [attended_annotations, glimpses], _ = theano.scan(fn=self._attended_annotation,
-                                                          sequences=[x],
-                                                          non_sequences=[annotations])
+        [_hidden, attended_annotations, glimpses], _ = theano.scan(fn=self._attended_annotation,
+                                                                   sequences=[x],
+                                                                   non_sequences=[annotations],
+                                                                   outputs_info=[h0, None, None])
 
         # final pass; apply softmax
         y_softmax, _ = theano.scan(fn=self._softmax,
